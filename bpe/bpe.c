@@ -137,7 +137,13 @@ void run_bpe(const char* text, PairArray* pairs, Uint32Array* tokens_out) {
 
 		if (freq[max_index].value <= 1) break;
 
+		printf("Tokens before merge: %zu\n", tokens_in.a.length);
+		fflush(stdout);
+
 		pair_array_append(pairs, &freq[max_index].key);
+
+		printf("Merged most frequent pair: [%u,%u] => token ID: %zu\n", freq[max_index].key.l, freq[max_index].key.r, pairs->a.length - 1);
+		fflush(stdout);
 
 		temp_tokens.a.length = 0;
 		for (size_t i = 0; i < tokens_in.a.length;) {
@@ -247,7 +253,6 @@ int main() {
 	printf("\n\tLookup table written to 'lookup_table.txt'\n");
 
 
-	// Cleanup
 	free(text);
 	free(pairs.a.items);
 	free(tokens_out.a.items);
