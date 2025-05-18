@@ -170,21 +170,85 @@ void print_compressed_tokens(Uint32Array* tokens) {
 	printf("\n");
 }
 
-int main() {
-	const char* text = "The original BPE algorithm operates by iteratively replacing the most common contiguous sequences of characters in a target text with unused 'placeholder' bytes. The iteration ends when no sequences can be found, leaving the target text effectively compressed. Decompression can be performed by reversing this process, querying known placeholder terms against their corresponding denoted sequence, using a lookup table. In the original paper, this lookup table is encoded and stored alongside the compressed text.";
+void write_lookup_table(const char* filename, PairArray* pairs) {
+	FILE* out = fopen(filename, "w");
+	if (!out) {
+		perror("Error writing lookup table");
+		return;
+	}
 
+	Pair* pair_items = (Pair*)pairs->a.items;
+
+	for (size_t i = 0; i < pairs->a.length; i++) {
+		Pair p = pair_items[i];
+		if (p.r == 0) {
+			// original character
+			if (p.l >= 32 && p.l <= 126) {
+				fprintf(out, "%zu: '%c'\n", i, (char)p.l);
+			}
+			else {
+				fprintf(out, "%zu: 0x%02X\n", i, p.l);  // hex
+			}
+		}
+		else {
+	
+			fprintf(out, "%zu: [%u, %u]\n", i, p.l, p.r);
+		}
+	}
+
+	fclose(out);
+}
+
+
+int main() {
+	char filename[512];
+
+	printf("Enter the input file path: ");
+	if (!fgets(filename, sizeof(filename), stdin)) {
+		fprintf(stderr, "Error reading input.\n");
+		return 1;
+	}
+
+	filename[strcspn(filename, "\n")] = 0;
+	FILE* file = fopen(filename, "rb");
+	if (!file) {
+		perror("Error opening file");
+		return 1;
+	}
+
+	fseek(file, 0, SEEK_END);
+	long file_size = ftell(file);
+	rewind(file);
+
+	char* text = (char*)malloc(file_size + 1);
+	if (!text) {
+		fprintf(stderr, "Memory allocation failed\n");
+		fclose(file);
+		return 1;
+	}
+
+	size_t bytes_read = fread(text, 1, file_size, file);
+	fclose(file);
+	text[bytes_read] = '\0';
+
+	// run bpe
 	PairArray pairs = pair_array_init();
 	Uint32Array tokens_out;
-
 	run_bpe(text, &pairs, &tokens_out);
 
-
-	printf("\n	Readable compressed view:\n");
+	printf("\n\tReadable compressed view:\n");
 	dump_tokens(pairs, tokens_out);
-	printf("\n	Compressed token IDs:\n");
+
+	printf("\n\tCompressed token IDs:\n");
 	print_compressed_tokens(&tokens_out);
 
+	// create the lookup table for decompression
+	write_lookup_table("lookup_table.txt", &pairs);
+	printf("\n\tLookup table written to 'lookup_table.txt'\n");
 
+
+	// Cleanup
+	free(text);
 	free(pairs.a.items);
 	free(tokens_out.a.items);
 
