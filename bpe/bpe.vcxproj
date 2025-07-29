@@ -127,10 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="bpe.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="stb_ds.h" />
+    <ClCompile Include="bpe.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
