@@ -18,9 +18,30 @@
     <ClCompile Include="bpe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="nn.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="data.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="data_handler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bpe.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="nn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="data_handler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

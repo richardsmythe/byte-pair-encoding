@@ -192,43 +192,9 @@ std::string decode_tokens(const PairArray& pairs, const Uint32Array& tokens) {
     return output;
 }
 
-} // namespace bpe
+} 
 
 // hash specialization
 size_t std::hash<bpe::Pair>::operator()(const bpe::Pair& p) const {
     return std::hash<uint32_t>()(p.l) ^ (std::hash<uint32_t>()(p.r) << 1);
 }
-
-int main() {
-    std::string filename;
-    std::cout << "Enter the input file path: ";
-    std::getline(std::cin, filename);
-    std::ifstream file(filename, std::ios::binary);
-    if (!file) {
-        std::cerr << "Error opening file" << std::endl;
-        return 1;
-    }
-    std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-    bpe::PairArray pairs;
-    bpe::Uint32Array tokens_out;
-    std::string lookup_table_filename = "lookup_table.txt";
-
-    bpe::run_bpe(text, pairs, tokens_out);
-    std::cout << "\nReadable compressed view:\n";
-    bpe::dump_tokens(pairs, tokens_out);
-    std::cout << "\nCompressed token IDs:\n";
-    bpe::print_compressed_tokens(tokens_out);
-    bpe::write_lookup_table(lookup_table_filename, pairs);
-    std::cout << "\nLookup table written to 'lookup_table.txt'\n";
-    
-    // decode and print original input
-    pairs.clear();
-    std::cout << "\nDecoding tokens... Reading lookup table and converting to original output:";
-    pairs = bpe::decompress_using_lookup_table(lookup_table_filename);
-    std::string original_input_text = bpe::decode_tokens(pairs, tokens_out);
-    std::cout << "\n\n\n" << original_input_text << std::endl;
-
-    return 0;
-}
-
