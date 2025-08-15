@@ -5,61 +5,48 @@
 #include <sstream>
 
 int main() {
-    const size_t INPUT_SIZE = 64;
-    const size_t ITERATIONS = 2000;
-    const size_t SAMPLE_LIMIT = 2000;
+    const size_t INPUT_SIZE = 32;
+    const size_t ITERATIONS = 3000;
 
     // load dataset and preprocess
     Data_Handler dh;
     dh.read_csv("SMSSpamCollection.txt", "\t");
-    dh.split_data();
-
-    // Check for class distribution in training set
-    if (dh.is_training_imbalanced()) {
-        std::cout << "Dataset is imbalanced. Rebalancing...\n";
-        dh.basic_smote();
-    }
+    dh.split_data(); 
 
     std::vector<std::vector<float>> train_features, test_features;
     std::vector<float> train_labels, test_labels;
 
-    // prepare training data
+    // prepare training data with embeddings
     for (const auto& d : dh.get_training_data()) {
-        train_features.push_back(dh.pad_or_truncate(d.get_feature_vector(), INPUT_SIZE));
+        train_features.push_back(dh.embed_and_average(d.get_feature_vector(), INPUT_SIZE));
         train_labels.push_back(static_cast<float>(d.get_label()));
     }
 
-    // prepare test data
+    for (size_t i = 0; i < 5 && i < train_features.size(); ++i) {
+        std::cout << "Label: " << train_labels[i] << " Features: ";
+        for (float v : train_features[i]) std::cout << v << " ";
+        std::cout << std::endl;
+    }
+
+    // prepare test data with embeddings
     for (const auto& d : dh.get_test_data()) {
-        test_features.push_back(dh.pad_or_truncate(d.get_feature_vector(), INPUT_SIZE));
+        test_features.push_back(dh.embed_and_average(d.get_feature_vector(), INPUT_SIZE));
         test_labels.push_back(static_cast<float>(d.get_label()));
+    }
+
+    // calculate class weights for weighted loss
+    // weights for each class is inversely proportional to its frequency
+    float weight_ham = 1.0f, weight_spam = 1.0f;
+    if (dh.is_training_imbalanced()) {        
+        std::cout << "Dataset is imbalanced. Rebalancing...\n";
+        weight_ham = (float)(dh.ham_count + dh.spam_count) / (2.0f * dh.ham_count);
+        weight_spam = (float)(dh.ham_count + dh.spam_count) / (2.0f * dh.spam_count);
+        std::cout << "Using weighted loss: weight_ham=" << weight_ham << ", weight_spam=" << weight_spam << std::endl;
     }
 
     // train the NN
     NeuralNetwork nn(INPUT_SIZE, ITERATIONS);
-    nn.train(train_features, train_labels, 0.1f);
-
-    // Uncomment to write to file the BPE lookup table
-   /* std::stringstream sample_text;
-    size_t sample_count = 0;
-
-    for (const auto& d : dh.get_training_data()) {
-        for (auto token : d.get_feature_vector()) {
-            sample_text << static_cast<char>(token);
-        }
-        sample_text << " ";
-        if (++sample_count >= SAMPLE_LIMIT) break;
-    }
-    std::string vocab_sample = sample_text.str();
-    bpe::PairArray vocab_pairs;
-    bpe::Uint32Array vocab_tokens;
-    bpe::run_bpe(vocab_sample, vocab_pairs, vocab_tokens);
-    bpe::write_lookup_table("lookup_table.txt", vocab_pairs);
-    std::cout << "Lookup table written to 'lookup_table.txt'\n";*/
-
-
-
-
+    nn.train(train_features, train_labels, 0.1f, weight_ham, weight_spam);
 
     // analyse results
     size_t correct = 0;
@@ -85,7 +72,7 @@ int main() {
         else if (pred_label == 1 && true_label == 0) fp++;
         else if (pred_label == 0 && true_label == 1) fn++;
     }
-    std::cout << "\n\nConfusion Matrix:\n";
+    std::cout << "\nConfusion Matrix:\n";
     std::cout << "TP: " << tp << "  FP: " << fp << std::endl;
     std::cout << "FN: " << fn << "  TN: " << tn << std::endl;
 

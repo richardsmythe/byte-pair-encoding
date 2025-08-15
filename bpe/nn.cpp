@@ -72,14 +72,14 @@ void NeuralNetwork::backward(const std::vector<float>& x, float y_true, float ma
     b_output -= magnitude * grad_b_output;
 }
 
-float NeuralNetwork::train(const std::vector<std::vector<float>>& X, const std::vector<float>& y, float magnitude) {
+float NeuralNetwork::train(const std::vector<std::vector<float>>& X, const std::vector<float>& y, float magnitude, float weight_ham, float weight_spam) {
     for (size_t iter = 0; iter < iterations; ++iter) {
         for (size_t i = 0; i < X.size(); ++i) {
             forward(X[i]);
-            backward(X[i], y[i], magnitude);
+            float class_weight = (y[i] == 1.0f) ? weight_spam : weight_ham;
+            backward(X[i], y[i], magnitude * class_weight);
         }
     }
-   
     return 0.0f;
 }
 

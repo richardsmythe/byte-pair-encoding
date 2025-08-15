@@ -7,6 +7,7 @@
 #include <string>
 #include "bpe.h"
 #include <random>
+#include <unordered_map>
 
 
 Data_Handler::Data_Handler() : spam_count(0), ham_count(0) {}
@@ -112,47 +113,41 @@ std::vector<float> Data_Handler::pad_or_truncate(const std::vector<uint32_t>& in
 }
 
 /// <summary>
-/// Basic SMOTE to interpolate between 2 random spam samples and generate synthetic data for balancing.
-/// For every synthetic sample needed it randomly selects 2 samples, pads, creates new Data object 
-/// with this synthetic feature vexctor and sets label as 1 for spam.
+/// Turn the tokens in to an embedding vector of more meaningful data for the NN model.
+/// Averaging the embeddings summarizes the message in a way the NN can better udnerstand.
+/// The embedding size can change but for now it's fine at 32.
 /// </summary>
-void Data_Handler::basic_smote() {
-	std::vector<Data> spam_samples;
-	// get all spam samples
-	for (const auto& d : training_data) {
-		if (d.get_label() == 1) spam_samples.push_back(d);
-	}
-
-	// size_t needed = ham_count - spam_count;
-	// less aggressive - will only generate enough synthetic spam samples to bring the spam count up to 50% of the ham count
-	size_t target_spam = static_cast<size_t>(0.5 * ham_count); // 50% of ham
-	size_t needed = (spam_count < target_spam) ? (target_spam - spam_count) : 0;
-	
-	if (spam_samples.empty() || needed == 0) return;
-
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> dis(0, spam_samples.size() - 1);
-
-	for (size_t i = 0; i < needed; ++i) {
-		// Pick two random spam samples
-		const Data& random_spam_sample1 = spam_samples[dis(gen)];
-		const Data& random_spam_sample2 = spam_samples[dis(gen)];
-		std::vector<uint32_t> new_features;
-		const auto& f1 = random_spam_sample1.get_feature_vector();
-		const auto& f2 = random_spam_sample2.get_feature_vector();
-		size_t len = std::min(f1.size(), f2.size());
-		for (size_t j = 0; j < len; ++j) {
-			// randomly pick a token from random_spam_sample1 or random_spam_sample2
-			new_features.push_back((gen() % 2 == 0) ? f1[j] : f2[j]);
+std::vector<float> Data_Handler::embed_and_average(const std::vector<uint32_t>& input, size_t embedding_size) const {
+	static std::unordered_map<uint32_t, std::vector<float>> embedding_matrix;
+	static bool initialized = false;
+	if (!initialized) {
+		// create embedding matrix with random vectors for each token ID
+		uint32_t max_token = 0;
+		for (const auto& d : data_array) {
+			for (auto t : d.get_feature_vector()) {
+				if (t > max_token) max_token = t;
+			}
 		}
-		// pads new synthetic feature vector
-		while (new_features.size() < f1.size()) new_features.push_back(0);
-		Data synthetic;
-		synthetic.set_feature_vector(new_features);
-		synthetic.set_label(1); 
-		training_data.push_back(synthetic);
+		std::mt19937 gen(42);
+		std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+		for (uint32_t i = 0; i <= max_token; ++i) {
+			std::vector<float> emb(embedding_size);
+			for (size_t j = 0; j < embedding_size; ++j) emb[j] = dis(gen);
+			embedding_matrix[i] = emb;
+		}
+		initialized = true;
 	}
+
+	// look up embeddings for each token in the message
+	std::vector<float> result(embedding_size, 0.0f);
+	if (input.empty()) return result;
+	for (auto t : input) {
+		const auto& emb = embedding_matrix[t];
+		for (size_t j = 0; j < embedding_size; ++j) result[j] += emb[j];
+	}
+	// now average the embeddings to get a single vector for the message
+	for (size_t j = 0; j < embedding_size; ++j) result[j] /= input.size();
+	return result;
 }
 
 const std::vector<Data>& Data_Handler::get_training_data() const {

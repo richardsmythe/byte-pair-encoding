@@ -5,7 +5,7 @@
 class NeuralNetwork {
 public:
     NeuralNetwork(size_t input_size, size_t iterations);
-    float train(const std::vector<std::vector<float>>& X, const std::vector<float>& y, float magnitude);
+    float train(const std::vector<std::vector<float>>& X, const std::vector<float>& y, float magnitude, float weight_ham, float weight_spam);
     float predict(const std::vector<float>& x);
 private:
     float sigmoid(float x);
