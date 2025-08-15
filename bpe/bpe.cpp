@@ -79,6 +79,8 @@ void run_bpe(const std::string& text, PairArray& pairs, Uint32Array& tokens_out)
         swap_tokens(tokens_in, temp_tokens);
     }
     tokens_out = tokens_in;
+    // Write the lookup table to a file after BPE is done
+    write_lookup_table("lookup_table.txt", pairs);
 }
 
 void print_compressed_tokens(const Uint32Array& tokens) {

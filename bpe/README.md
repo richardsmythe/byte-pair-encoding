@@ -10,7 +10,7 @@ This project demonstrates a custom implementation of Byte Pair Encoding (BPE) in
 
 ## Project Features
 - **Custom BPE implementation in C++** for tokenizing SMS messages.
-- **Builds a BPE vocabulary and lookup table** from the dataset.
+- **Builds a BPE vocabulary and lookup table** from the dataset, and saves as text file in the project directory.
 - **Tokenizes each message into BPE subword tokens.**
 - **Demonstrates BPE output** by converting messages into sequences of token IDs.
 - **Shows how BPE tokens can be used as features** for downstream machine learning tasks.
@@ -34,17 +34,33 @@ This project demonstrates a custom implementation of Byte Pair Encoding (BPE) in
 - Reduces vocabulary size, making models more efficient.
 - Improves generalization in NLP tasks.
 
+## Example BPE Lookup Table
+Below is a sample of what a BPE lookup table might look like after training:
+0: 0x0
+1: 0x1
+2: 0x2
+...
+32: ' '
+33: '!'
+...
+97: 'a'
+98: 'b'
+...
+256: [116, 115]
+257: [256, 32]- Entries 0–255: Base tokens, each representing a single byte/character.
+- Entries 256 and above: New tokens created by merging frequent pairs during BPE training. For example, `256: [116, 115]` means token 256 represents the pair 't' and 's'.
+- The lookup table allows you to decode any token ID back to its original character sequence by recursively expanding the pairs.
 
 ## Classifier Output
 
-Test accuracy: 81.5081%
+Test accuracy: 88.6894%
 
 Confusion Matrix:
-TP: 116  FP: 187
-FN: 19  TN: 792
-Precision: 0.382838
-Recall: 0.859259
-F1 Score: 0.52968
+TP: 137  FP: 106
+FN: 20  TN: 851
+Precision: 0.563786
+Recall: 0.872611
+F1 Score: 0.685
 
 ## Usage
 1. Place your SMS dataset in the project directory (e.g., `SMSSpamCollection.txt`).
