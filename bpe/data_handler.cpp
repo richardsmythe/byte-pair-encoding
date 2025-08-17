@@ -81,23 +81,18 @@ void Data_Handler::split_data(float train_percent, float test_percent, float val
 /// Prints the class distribution (ham/spam counts) in the training set.
 /// </summary>
 void Data_Handler::print_class_distribution() const {
-    std::cout << "Training set: ham = " << ham_count << ", spam = " << spam_count << std::endl;
+	std::cout << "Training set: ham = " << ham_count << ", spam = " << spam_count << std::endl;
 }
 
 /// <summary>
 /// Checks if the training set is imbalanced based on a given threshold.
 /// </summary>
 bool Data_Handler::is_training_imbalanced(float threshold) {
-    spam_count = 0;
-    ham_count = 0;
-    for (const auto& d : training_data) {
-        if (d.get_label() == 1) spam_count++;
-        else ham_count++;
-    }
-    std::cout << "Training set: ham = " << ham_count << ", spam = " << spam_count << std::endl;
-    size_t minority = std::min(spam_count, ham_count);
-    size_t majority = std::max(spam_count, ham_count);
-    return (minority < threshold * majority);
+	count_ham_spam(training_data, ham_count, spam_count);
+	std::cout << "Training set: ham = " << ham_count << ", spam = " << spam_count << std::endl;
+	size_t minority = std::min(spam_count, ham_count);
+	size_t majority = std::max(spam_count, ham_count);
+	return (minority < threshold * majority);
 }
 
 /// <summary>
@@ -148,6 +143,91 @@ std::vector<float> Data_Handler::embed_and_average(const std::vector<uint32_t>& 
 	// now average the embeddings to get a single vector for the message
 	for (size_t j = 0; j < embedding_size; ++j) result[j] /= input.size();
 	return result;
+}
+
+/// <summary>
+/// Helps distinguish between spam and ham by identifying features (words/tokens) that appear
+/// much more frequently in one class than the other. For each feature, it measures the difference
+/// between observed and expected occurrences in spam and ham, selecting those with the largest differences
+/// </summary>
+std::vector<uint32_t> Data_Handler::select_features_chi_square(size_t top_n) const {
+	// chi_sqr = sum observed-expected)^2 / expected
+	size_t ham_total = 0, spam_total = 0;
+	count_ham_spam(training_data, ham_total, spam_total);
+
+	std::unordered_map<uint32_t, size_t> spam_with_feature;
+	std::unordered_map<uint32_t, size_t> ham_with_feature;
+	std::set<uint32_t> all_features_seen;
+
+
+	// track unique features for each ham and spam
+	for (const auto& message : training_data) {
+		std::set<uint32_t> unique_features_in_message(message.get_feature_vector().begin(), message.get_feature_vector().end());
+		for (auto feature : unique_features_in_message) {
+			if (message.get_label() == 1) {
+				spam_with_feature[feature]++;
+			}
+			else {
+				ham_with_feature[feature]++;
+			}
+			all_features_seen.insert(feature);
+		}
+	}
+
+	// calculate chi-square for each feature
+	struct FeatureScore {
+		uint32_t feature;
+		double chi_sqr;
+		bool operator<(const FeatureScore& other) const {
+			return chi_sqr > other.chi_sqr; 
+		}
+	};
+
+	std::vector<FeatureScore> scores;
+	for (const auto& feature : all_features_seen) {
+		size_t A = spam_with_feature[feature];
+		size_t B = ham_with_feature[feature];
+		size_t C = spam_total - A;
+		size_t D = ham_total - B;
+
+		double total = spam_total + ham_total;
+		double expected_A = (A + B) * spam_total / total;
+		double expected_B = (A + B) * ham_total / total;
+		double expected_C = (C + D) * spam_total / total;
+		double expected_D = (C + D) * ham_total / total;
+
+		double chi_sqr = 0.0; 
+		if (expected_A > 0) chi_sqr += ((A - expected_A) * (A - expected_A)) / expected_A;
+		if (expected_B > 0) chi_sqr += ((B - expected_B) * (B - expected_B)) / expected_B;
+		if (expected_C > 0) chi_sqr += ((C - expected_C) * (C - expected_C)) / expected_C;
+		if (expected_D > 0) chi_sqr += ((D - expected_D) * (D - expected_D)) / expected_D;
+
+		scores.push_back({ feature, chi_sqr });
+	}	
+
+	std::sort(scores.begin(), scores.end());
+
+	std::vector<uint32_t> top_features;
+	for (size_t i = 0; i < std::min(top_n, scores.size()); i++)
+	{
+		top_features.push_back(scores[i].feature);
+	}
+
+	return top_features;
+}
+
+
+
+/// <summary>
+/// Counts the number of ham and spam samples in the given data vector.
+/// </summary>
+void Data_Handler::count_ham_spam(const std::vector<Data>& data, size_t& ham_count, size_t& spam_count) const {
+	ham_count = 0;
+	spam_count = 0;
+	for (const auto& d : data) {
+		if (d.get_label() == 1) spam_count++;
+		else ham_count++;
+	}
 }
 
 const std::vector<Data>& Data_Handler::get_training_data() const {

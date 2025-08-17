@@ -3,40 +3,50 @@
 #include <iostream>
 #include "bpe.h"
 #include <sstream>
+#include <algorithm>
 
 int main() {
     const size_t INPUT_SIZE = 32;
-    const size_t ITERATIONS = 3000;
+    const size_t ITERATIONS = 4000;
+    const size_t TOP_N = 100;
 
     // load dataset and preprocess
     Data_Handler dh;
     dh.read_csv("SMSSpamCollection.txt", "\t");
     dh.split_data(); 
 
+    // Select top N features using chi-square
+    std::vector<uint32_t> selected_features = dh.select_features_chi_square(TOP_N);
     std::vector<std::vector<float>> train_features, test_features;
     std::vector<float> train_labels, test_labels;
 
-    // prepare training data with embeddings
+    // prepare training data with embeddings, filtering by selected features
     for (const auto& d : dh.get_training_data()) {
-        train_features.push_back(dh.embed_and_average(d.get_feature_vector(), INPUT_SIZE));
+        std::vector<uint32_t> filtered;
+        for (auto t : d.get_feature_vector()) {
+            if (std::find(selected_features.begin(), selected_features.end(), t) != selected_features.end()) {
+                filtered.push_back(t);
+            }
+        }
+        train_features.push_back(dh.embed_and_average(filtered, INPUT_SIZE));
         train_labels.push_back(static_cast<float>(d.get_label()));
     }
 
-    for (size_t i = 0; i < 5 && i < train_features.size(); ++i) {
-        std::cout << "Label: " << train_labels[i] << " Features: ";
-        for (float v : train_features[i]) std::cout << v << " ";
-        std::cout << std::endl;
-    }
-
-    // prepare test data with embeddings
+    // prepare test data with embeddings, filtering by selected features
     for (const auto& d : dh.get_test_data()) {
-        test_features.push_back(dh.embed_and_average(d.get_feature_vector(), INPUT_SIZE));
+        std::vector<uint32_t> filtered;
+        for (auto t : d.get_feature_vector()) {
+            if (std::find(selected_features.begin(), selected_features.end(), t) != selected_features.end()) {
+                filtered.push_back(t);
+            }
+        }
+        test_features.push_back(dh.embed_and_average(filtered, INPUT_SIZE));
         test_labels.push_back(static_cast<float>(d.get_label()));
     }
 
     // calculate class weights for weighted loss
     // weights for each class is inversely proportional to its frequency
-    float weight_ham = 1.0f, weight_spam = 1.0f;
+    float weight_ham = 1.0f, weight_spam = 8.0f; // higher for spam as it's minority class
     if (dh.is_training_imbalanced()) {        
         std::cout << "Dataset is imbalanced. Rebalancing...\n";
         weight_ham = (float)(dh.ham_count + dh.spam_count) / (2.0f * dh.ham_count);

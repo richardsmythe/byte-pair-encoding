@@ -31,6 +31,12 @@ public:
     
     void print_class_distribution() const;
     bool is_training_imbalanced(float threshold = 0.3f);
+    
+    std::vector<uint32_t> select_features_chi_square(size_t top_n) const;
 
+    /// <summary>
+    /// Counts the number of ham and spam samples in the given data vector.
+    /// </summary>
+    void count_ham_spam(const std::vector<Data>& data, size_t& ham_count, size_t& spam_count) const;
 
 };
