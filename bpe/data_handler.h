@@ -23,8 +23,10 @@ public:
     const std::vector<Data>& get_training_data() const;
     const std::vector<Data>& get_test_data() const;
     const std::vector<Data>& get_validation_data() const;
-   
+    
+
     size_t get_total_samples() const;
+    size_t get_vocabulary_size() const;
 
     std::vector<float> pad_or_truncate(const std::vector<uint32_t>& input, size_t fixed_size) const;
     std::vector<float> embed_and_average(const std::vector<uint32_t>& input, size_t embedding_size) const;
@@ -38,5 +40,12 @@ public:
     /// Counts the number of ham and spam samples in the given data vector.
     /// </summary>
     void count_ham_spam(const std::vector<Data>& data, size_t& ham_count, size_t& spam_count) const;
+
+    /// <summary>
+    /// Calculate the cosine similarity between two embedding vectors.
+    /// Returns a value between -1 and 1, where 1 means identical vectors,
+    /// 0 means orthogonal vectors, and -1 means opposite vectors.
+    /// </summary>
+    float cosine_similarity(const std::vector<float>& vec1, const std::vector<float>& vec2) const;
 
 };

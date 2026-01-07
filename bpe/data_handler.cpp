@@ -146,6 +146,36 @@ std::vector<float> Data_Handler::embed_and_average(const std::vector<uint32_t>& 
 }
 
 /// <summary>
+/// Calculate the cosine similarity between two embedding vectors.
+/// Returns a value between -1 and 1, where 1 means identical vectors,
+/// 0 means orthogonal vectors, and -1 means opposite vectors.
+/// </summary>
+float Data_Handler::cosine_similarity(const std::vector<float>& vec1, const std::vector<float>& vec2) const {
+    if (vec1.size() != vec2.size() || vec1.empty()) {
+        return 0.0f; // Invalid vectors
+    }
+
+    float dot_product = 0.0f;
+    float magnitude1 = 0.0f;
+    float magnitude2 = 0.0f;
+
+    for (size_t i = 0; i < vec1.size(); ++i) {
+        dot_product += vec1[i] * vec2[i];
+        magnitude1 += vec1[i] * vec1[i];
+        magnitude2 += vec2[i] * vec2[i];
+    }
+
+    magnitude1 = std::sqrt(magnitude1);
+    magnitude2 = std::sqrt(magnitude2);
+
+    if (magnitude1 < 1e-10 || magnitude2 < 1e-10) {
+        return 0.0f; // Avoid division by zero
+    }
+
+    return dot_product / (magnitude1 * magnitude2);
+}
+
+/// <summary>
 /// Helps distinguish between spam and ham by identifying features (words/tokens) that appear
 /// much more frequently in one class than the other. For each feature, it measures the difference
 /// between observed and expected occurrences in spam and ham, selecting those with the largest differences
@@ -242,4 +272,14 @@ const std::vector<Data>& Data_Handler::get_validation_data() const {
 
 size_t Data_Handler::get_total_samples() const {
 	return data_array.size();
+}
+
+size_t Data_Handler::get_vocabulary_size() const {
+	std::set<uint32_t> unique_tokens;
+	for (const auto& d : data_array) {
+		for (auto token : d.get_feature_vector()) {
+			unique_tokens.insert(token);
+		}
+	}
+	return unique_tokens.size();
 }

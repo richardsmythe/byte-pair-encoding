@@ -8,12 +8,27 @@
 int main() {
     const size_t INPUT_SIZE = 32;
     const size_t ITERATIONS = 4000;
-    const size_t TOP_N = 100;
+    size_t TOP_N = 200;
 
     // load dataset and preprocess
     Data_Handler dh;
     dh.read_csv("SMSSpamCollection.txt", "\t");
     dh.split_data(); 
+
+    // Get vocab size and estimate best TOP_N
+	size_t vocab_size = dh.get_vocabulary_size();
+    if (vocab_size <= 100) {
+        TOP_N = vocab_size;
+    }
+    else {
+        const double PERCENT = 0.05;    // select top 5% by default
+        const size_t MIN_TOP = 50;      // at least 50 features for medium vocabs
+        const size_t MAX_TOP = 2000;    // cap to avoid too many features
+        size_t candidate = static_cast<size_t>(vocab_size * PERCENT);
+        if (candidate < MIN_TOP) candidate = MIN_TOP;
+        if (candidate > MAX_TOP) candidate = MAX_TOP;
+        TOP_N = std::min(candidate, vocab_size);
+    }
 
     // Select top N features using chi-square
     std::vector<uint32_t> selected_features = dh.select_features_chi_square(TOP_N);
@@ -44,9 +59,40 @@ int main() {
         test_labels.push_back(static_cast<float>(d.get_label()));
     }
 
+    // Demonstrate cosine similarity between messages
+    std::cout << "\n--- Cosine Similarity Demonstration ---\n";
+    
+    // Find spam and ham examples
+    int spam_index = -1, ham_index = -1, another_spam_index = -1;
+    for (size_t i = 0; i < test_labels.size(); ++i) {
+        if (test_labels[i] == 1.0f && spam_index == -1) {
+            spam_index = i;
+        } else if (test_labels[i] == 0.0f && ham_index == -1) {
+            ham_index = i;
+        } else if (test_labels[i] == 1.0f && another_spam_index == -1 && spam_index != -1) {
+            another_spam_index = i;
+            break;
+        }
+        
+        if (spam_index != -1 && ham_index != -1 && another_spam_index != -1) {
+            break;
+        }
+    }
+    
+    if (spam_index != -1 && ham_index != -1 && another_spam_index != -1) {
+        // Cosine similarity between spam and ham
+        float sim_spam_ham = dh.cosine_similarity(test_features[spam_index], test_features[ham_index]);
+        // Cosine similarity between two spam messages
+        float sim_spam_spam = dh.cosine_similarity(test_features[spam_index], test_features[another_spam_index]);
+        
+        std::cout << "Cosine similarity between spam and ham: " << sim_spam_ham << std::endl;
+        std::cout << "Cosine similarity between two spam messages: " << sim_spam_spam << std::endl;
+        std::cout << "Note: Higher values indicate more similar messages\n";
+    }
+
     // calculate class weights for weighted loss
     // weights for each class is inversely proportional to its frequency
-    float weight_ham = 1.0f, weight_spam = 8.0f; // higher for spam as it's minority class
+    float weight_ham = 1.0f, weight_spam = 1.0f; // higher for spam as it's minority class
     if (dh.is_training_imbalanced()) {        
         std::cout << "Dataset is imbalanced. Rebalancing...\n";
         weight_ham = (float)(dh.ham_count + dh.spam_count) / (2.0f * dh.ham_count);
@@ -71,6 +117,8 @@ int main() {
         if (pred_label == static_cast<int>(test_labels[i])) correct++;
     }
     std::cout << "\n\n######## Results ########" << std::endl;
+    std::cout << "TOP_N used: " << TOP_N << std::endl;
+    std::cout << "Vocabulary size: " << vocab_size << std::endl;
     std::cout << "Test accuracy: " << (100.0 * correct / test_features.size()) << "%" << std::endl;
     size_t tp = 0, tn = 0, fp = 0, fn = 0;
     for (size_t i = 0; i < test_features.size(); ++i) {
