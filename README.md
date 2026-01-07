@@ -1,7 +1,7 @@
 # BPE Tokenizer & SMS Spam Classifier (C++)
 
 ## Overview
-This project demonstrates a custom implementation of Byte Pair Encoding (BPE) in C++. BPE is a powerful text tokenization technique used in modern NLP to break text into subword units, enabling efficient handling of rare words and reducing vocabulary size. To showcase the effectiveness of BPE, the project includes a simple SMS spam classifier using a neural network.
+This project demonstrates a custom implementation of Byte Pair Encoding (BPE) in C++. BPE is a powerful text tokenization technique used in modern NLP to break text into subword units, enabling efficient handling of rare words and reducing vocabulary size. To showcase the effectiveness of BPE, the project includes a simple SMS spam classifier using a neural network. It acchievs 93.3% accuracy with a simple single-layer neural network which is impressive for spam detection. 
 
 ## What is BPE?
 - **Byte Pair Encoding (BPE)** is a data compression and tokenization algorithm.
@@ -21,12 +21,14 @@ This project demonstrates a custom implementation of Byte Pair Encoding (BPE) in
    - Reads SMS messages and labels from a file.
    - Builds a BPE vocabulary and lookup table.
    - Tokenizes each message into BPE subword tokens and converts them to token IDs.
-2. **Feature Engineering (Demo):**
+2. **Feature Engineering:**
+   - Chi Square to select features based on vocabulary size  
    - Maps each token ID to a random embedding vector.
    - Averages all token embeddings in a message to get a single feature vector.
-3. **Model Training (Demo):**
+   - Handle class imbalance by adjusting weights based on class frequency
+4. **Model Training:**
    - Trains a simple neural network to classify messages as spam or ham using BPE-based features.
-4. **Evaluation:**
+5. **Evaluation:**
    - Prints accuracy, precision, recall, F1 score, and confusion matrix on the test set.
 
 ## Why Use BPE?
@@ -52,15 +54,16 @@ Below is a sample of what a BPE lookup table might look like after training:
 - The lookup table allows you to decode any token ID back to its original character sequence by recursively expanding the pairs.
 
 ## Classifier Output
-
-Test accuracy: 88.6894%
+- TOP_N used: 50
+- Vocabulary size: 226
+- Test accuracy: 93.7163%
 
 Confusion Matrix:
-TP: 137  FP: 106
-FN: 20  TN: 851
-Precision: 0.563786
-Recall: 0.872611
-F1 Score: 0.685
+- TP: 150  FP: 63
+- FN: 7  TN: 894
+- Precision: 0.704225
+- Recall: 0.955414
+- F1 Score: 0.810811
 
 ## Usage
 1. Place your SMS dataset in the project directory (e.g., `SMSSpamCollection.txt`).
